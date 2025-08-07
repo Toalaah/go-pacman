@@ -42,22 +42,30 @@ func QueryPackageDatabase(name, db string) (*Package, error) {
 		if err != nil {
 			return nil, err
 		}
-		// We *may* have found a matching package, parse + cache it.
-		if strings.HasPrefix(hdr.Name, name) {
-			pkg := &Package{}
-			b, err := io.ReadAll(t)
-			if err != nil {
-				return nil, err
-			}
-			if err := pkg.UnmarshalText(b); err != nil {
-				return nil, err
-			}
-			if pkg.Name != "" {
-				packageCache[pkg.Name] = pkg
-			}
-			if pkg.Name == name {
-				return pkg, nil
-			}
+		if !strings.HasSuffix(hdr.Name, "/desc") {
+			continue
+		}
+		// Strip trailing version info (everything after second-to-last '-').
+		idx := strings.LastIndex(hdr.Name, "-")
+		idx = strings.LastIndex(hdr.Name[:idx], "-")
+
+		if name != hdr.Name[:idx] {
+			continue
+		}
+
+		pkg := &Package{}
+		b, err := io.ReadAll(t)
+		if err != nil {
+			return nil, err
+		}
+		if err := pkg.UnmarshalText(b); err != nil {
+			return nil, err
+		}
+		if pkg.Name != "" {
+			packageCache[pkg.Name] = pkg
+		}
+		if pkg.Name == name {
+			return pkg, nil
 		}
 	}
 	return nil, nil

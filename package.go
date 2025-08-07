@@ -24,7 +24,7 @@ type Package struct {
 	Description  string            `pacman:"header=DESC,omitempty"`
 	CSize        uint64            `pacman:"header=CSIZE,omitempty"`
 	ISize        uint64            `pacman:"header=ISIZE,omitempty"`
-	Md5Sum       [md5.Size]byte    `pacman:"header=MD5SUM,omitempty"`
+	MD5Sum       [md5.Size]byte    `pacman:"header=MD5SUM,omitempty"`
 	Sha256Sum    [sha256.Size]byte `pacman:"header=SHA256SUM,omitempty"`
 	PGPSignature string            `pacman:"header=PGPSIG,omitempty"`
 	URL          string            `pacman:"header=URL,omitempty"`
@@ -289,7 +289,7 @@ func (p *Package) parseSection(section []string) error {
 		if err != nil {
 			return err
 		}
-		copy(p.Md5Sum[:], sum[:md5.Size])
+		copy(p.MD5Sum[:], sum[:md5.Size])
 
 	// Misc types
 	case HeaderBuildDate:
@@ -313,7 +313,7 @@ func (p *Package) parseSection(section []string) error {
 func writeArray[T fmt.Stringer](b *bytes.Buffer, v []T) {
 	l := len(v)
 	for i, e := range v {
-		fmt.Fprintf(b, "%s", e)
+		b.WriteString(e.String())
 		if i < l-1 {
 			b.WriteString("\n")
 		}
