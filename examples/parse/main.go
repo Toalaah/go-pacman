@@ -12,7 +12,7 @@ import (
 func main() {
 	q := os.Args[1]
 	fmt.Printf("Query: %s\n", q)
-	pkg, err := pacman.QueryPackage(q)
+	pkg, err := pacman.QueryLocal(q)
 	if err != nil {
 		log.Fatal(err)
 	}

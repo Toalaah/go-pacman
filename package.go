@@ -28,9 +28,11 @@ type Package struct {
 	Sha256Sum    [sha256.Size]byte `pacman:"header=SHA256SUM,omitempty"`
 	PGPSignature string            `pacman:"header=PGPSIG,omitempty"`
 	URL          string            `pacman:"header=URL,omitempty"`
+	Validation   string            `pacman:"header=VALIDATION,omitempty"`
 	Licenses     []License         `pacman:"header=LICENSE,omitempty"`
 	Arch         Architecture      `pacman:"header=ARCH,omitempty"`
 	BuildDate    time.Time         `pacman:"header=BUILDDATE,omitempty"`
+	InstallDate  time.Time         `pacman:"header=INSTALLDATE,omitempty"`
 	Packager     Packager          `pacman:"header=PACKAGER,omitempty"`
 	Groups       []string          `pacman:"header=GROUPS,omitempty"`
 	Conflicts    []string          `pacman:"header=CONFLICTS,omitempty"`
@@ -40,6 +42,7 @@ type Package struct {
 	MakeDepends  []string          `pacman:"header=MAKEDEPENDS,omitempty"`
 	OptDepends   []OptDependency   `pacman:"header=OPTDEPENDS,omitempty"`
 	CheckDepends []string          `pacman:"header=CHECKDEPENDS,omitempty"`
+	XData        []string          `pacman:"header=XDATA,omitempty"`
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface
@@ -155,11 +158,11 @@ func writeSection(b *bytes.Buffer, v any, opts structTag) {
 	fmt.Fprintf(b, headerFormat, opts.Header)
 	// Write contents
 	switch opts.Header {
-	case HeaderFilename, HeaderName, HeaderBase, HeaderVersion, HeaderDescription, HeaderPGPSignature, HeaderURL, HeaderArch, HeaderPackager:
+	case HeaderFilename, HeaderName, HeaderBase, HeaderVersion, HeaderDescription, HeaderPGPSignature, HeaderURL, HeaderArch, HeaderPackager, HeaderValidation:
 		fmt.Fprintf(b, "%s", v)
-	case HeaderCSize, HeaderISize:
+	case HeaderCSize, HeaderISize, HeaderSize:
 		b.WriteString(strconv.FormatUint(v.(uint64), 10))
-	case HeaderBuildDate:
+	case HeaderBuildDate, HeaderInstallDate:
 		v := v.(time.Time)
 		b.WriteString(strconv.FormatUint(uint64(v.Unix()), 10))
 	case HeaderSha256Sum:
@@ -171,7 +174,7 @@ func writeSection(b *bytes.Buffer, v any, opts structTag) {
 	case HeaderLicense:
 		v := v.([]License)
 		writeArray(b, v)
-	case HeaderGroups, HeaderConflicts, HeaderReplaces, HeaderProvides, HeaderDepends, HeaderMakeDepends, HeaderCheckDepends:
+	case HeaderGroups, HeaderConflicts, HeaderReplaces, HeaderProvides, HeaderDepends, HeaderMakeDepends, HeaderCheckDepends, HeaderXData:
 		v := v.([]string)
 		b.WriteString(strings.Join(v, "\n"))
 	case HeaderOptDepends:
@@ -233,6 +236,8 @@ func (p *Package) parseSection(section []string) error {
 		p.PGPSignature = data
 	case HeaderURL:
 		p.URL = data
+	case HeaderValidation:
+		p.Validation = data
 	case HeaderArch:
 		// TODO: validate architecture.
 		p.Arch = Architecture(data)
@@ -243,7 +248,8 @@ func (p *Package) parseSection(section []string) error {
 		if err != nil {
 			return err
 		}
-	case HeaderISize:
+	// NOTE: ISize and Size seem to be equivalent. 'SIZE' is used in the local DB description files, whereas 'ISIZE' is used in the sync DBs.
+	case HeaderISize, HeaderSize:
 		p.ISize, err = strconv.ParseUint(data, 10, 64)
 		if err != nil {
 			return err
@@ -278,6 +284,8 @@ func (p *Package) parseSection(section []string) error {
 		}
 	case HeaderCheckDepends:
 		p.CheckDepends = append(p.CheckDepends, section[1:]...)
+	case HeaderXData:
+		p.XData = append(p.XData, section[1:]...)
 	case HeaderSha256Sum:
 		sum, err := hex.DecodeString(data)
 		if err != nil {
@@ -299,6 +307,13 @@ func (p *Package) parseSection(section []string) error {
 			return err
 		}
 		p.BuildDate = time.Unix(t, 0)
+	case HeaderInstallDate:
+		var t int64
+		t, err = strconv.ParseInt(data, 10, 64)
+		if err != nil {
+			return err
+		}
+		p.InstallDate = time.Unix(t, 0)
 	case HeaderPackager:
 		d := strings.Split(data, " ")
 		p.Packager.Name = strings.Join(d[:len(d)-1], " ")
