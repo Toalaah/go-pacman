@@ -214,7 +214,6 @@ func (p *Package) parseSection(section []string) error {
 	if len(section) < 2 {
 		return fmt.Errorf("unexpected section length: %s", section)
 	}
-	fmt.Printf("%s\n", strings.Join(section, "\n"))
 	header := strings.TrimLeft(strings.TrimRight(section[0], "%"), "%")
 	data := strings.Join(section[1:], "\n")
 	var err error
