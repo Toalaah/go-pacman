@@ -71,6 +71,10 @@ const (
 	Amd64 Architecture = "x86_64"
 )
 
+func (a Architecture) String() string {
+	return string(a)
+}
+
 type License string
 
 func (l License) String() string {
