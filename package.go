@@ -3,6 +3,7 @@ package pacman
 import (
 	"bufio"
 	"bytes"
+	"crypto/md5"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -23,6 +24,7 @@ type Package struct {
 	Description  string            `pacman:"header=DESC,omitempty"`
 	CSize        uint64            `pacman:"header=CSIZE,omitempty"`
 	ISize        uint64            `pacman:"header=ISIZE,omitempty"`
+	Md5Sum       [md5.Size]byte    `pacman:"header=MD5SUM,omitempty"`
 	Sha256Sum    [sha256.Size]byte `pacman:"header=SHA256SUM,omitempty"`
 	PGPSignature string            `pacman:"header=PGPSIG,omitempty"`
 	URL          string            `pacman:"header=URL,omitempty"`
@@ -30,6 +32,9 @@ type Package struct {
 	Arch         Architecture      `pacman:"header=ARCH,omitempty"`
 	BuildDate    time.Time         `pacman:"header=BUILDDATE,omitempty"`
 	Packager     Packager          `pacman:"header=PACKAGER,omitempty"`
+	Groups       []string          `pacman:"header=GROUPS,omitempty"`
+	Conflicts    []string          `pacman:"header=CONFLICTS,omitempty"`
+	Replaces     []string          `pacman:"header=REPLACES,omitempty"`
 	Provides     []string          `pacman:"header=PROVIDES,omitempty"`
 	Depends      []string          `pacman:"header=DEPENDS,omitempty"`
 	MakeDepends  []string          `pacman:"header=MAKEDEPENDS,omitempty"`
@@ -125,8 +130,8 @@ func getStructTag(field reflect.StructField) structTag {
 	st := structTag{}
 	for opt := range strings.SplitSeq(tag, ",") {
 		opt := strings.TrimSpace(opt)
-		sp := strings.Split(opt, "=")
 		// Option may not have an assignment, even so we still split on "=" as it gives us the identifier either way.
+		sp := strings.Split(opt, "=")
 		switch sp[0] {
 		case "omitempty":
 			st.OmitEmpty = true
@@ -160,10 +165,13 @@ func writeSection(b *bytes.Buffer, v any, opts structTag) {
 	case "SHA256SUM":
 		v := v.([sha256.Size]byte)
 		b.WriteString(hex.EncodeToString(v[:]))
+	case "MD5SUM":
+		v := v.([md5.Size]byte)
+		b.WriteString(hex.EncodeToString(v[:]))
 	case "LICENSE":
 		v := v.([]License)
 		writeArray(b, v)
-	case "PROVIDES", "DEPENDS", "MAKEDEPENDS", "CHECKDEPENDS":
+	case "GROUPS", "CONFLICTS", "REPLACES", "PROVIDES", "DEPENDS", "MAKEDEPENDS", "CHECKDEPENDS":
 		v := v.([]string)
 		b.WriteString(strings.Join(v, "\n"))
 	case "OPTDEPENDS":
@@ -206,6 +214,7 @@ func (p *Package) parseSection(section []string) error {
 	if len(section) < 2 {
 		return fmt.Errorf("unexpected section length: %s", section)
 	}
+	fmt.Printf("%s\n", strings.Join(section, "\n"))
 	header := strings.TrimLeft(strings.TrimRight(section[0], "%"), "%")
 	data := strings.Join(section[1:], "\n")
 	var err error
@@ -247,6 +256,12 @@ func (p *Package) parseSection(section []string) error {
 			// TODO: validate licenses
 			p.Licenses = append(p.Licenses, License(e))
 		}
+	case "GROUPS":
+		p.Groups = append(p.Groups, section[1:]...)
+	case "CONFLICTS":
+		p.Conflicts = append(p.Conflicts, section[1:]...)
+	case "REPLACES":
+		p.Replaces = append(p.Replaces, section[1:]...)
 	case "PROVIDES":
 		p.Provides = append(p.Provides, section[1:]...)
 	case "DEPENDS":
@@ -255,14 +270,12 @@ func (p *Package) parseSection(section []string) error {
 		p.MakeDepends = append(p.MakeDepends, section[1:]...)
 	case "OPTDEPENDS":
 		for _, e := range section[1:] {
-			optDep := strings.Split(e, ": ")
-			if len(optDep) != 2 {
-				return fmt.Errorf("unexpected structure for opt dependency: %s", e)
+			s := strings.Split(e, ": ")
+			optDep := OptDependency{Package: s[0]}
+			if len(s) > 1 {
+				optDep.Reason = s[1]
 			}
-			p.OptDepends = append(p.OptDepends, OptDependency{
-				Package: optDep[0],
-				Reason:  optDep[1],
-			})
+			p.OptDepends = append(p.OptDepends, optDep)
 		}
 	case "CHECKDEPENDS":
 		p.CheckDepends = append(p.CheckDepends, section[1:]...)
@@ -272,6 +285,12 @@ func (p *Package) parseSection(section []string) error {
 			return err
 		}
 		copy(p.Sha256Sum[:], sum[:sha256.Size])
+	case "MD5SUM":
+		sum, err := hex.DecodeString(data)
+		if err != nil {
+			return err
+		}
+		copy(p.Md5Sum[:], sum[:md5.Size])
 
 	// Misc types
 	case "BUILDDATE":

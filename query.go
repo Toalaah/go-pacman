@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -12,7 +13,7 @@ import (
 
 const SyncRoot = "/var/lib/pacman/sync"
 
-var dataBases []string = []string{
+var databases []string = []string{
 	path.Join(SyncRoot, "core.db"),
 	path.Join(SyncRoot, "extra.db"),
 	path.Join(SyncRoot, "multilib.db"),
@@ -20,8 +21,8 @@ var dataBases []string = []string{
 
 var packageCache map[string]*Package = make(map[string]*Package)
 
-func QueryPackageDatabase(packageName, db string) (*Package, error) {
-	if pkg, ok := packageCache[packageName]; ok {
+func QueryPackageDatabase(name, db string) (*Package, error) {
+	if pkg, ok := packageCache[name]; ok {
 		return pkg, nil
 	}
 	f, err := os.Open(db)
@@ -42,7 +43,7 @@ func QueryPackageDatabase(packageName, db string) (*Package, error) {
 			return nil, err
 		}
 		// We *may* have found a matching package, parse + cache it.
-		if strings.HasPrefix(hdr.Name, packageName) {
+		if strings.HasPrefix(hdr.Name, name) {
 			pkg := &Package{}
 			b, err := io.ReadAll(t)
 			if err != nil {
@@ -54,7 +55,7 @@ func QueryPackageDatabase(packageName, db string) (*Package, error) {
 			if pkg.Name != "" {
 				packageCache[pkg.Name] = pkg
 			}
-			if pkg.Name == packageName {
+			if pkg.Name == name {
 				return pkg, nil
 			}
 		}
@@ -62,11 +63,11 @@ func QueryPackageDatabase(packageName, db string) (*Package, error) {
 	return nil, nil
 }
 
-func QueryPackage(packageName string) (*Package, error) {
+func QueryPackage(name string) (*Package, error) {
 	var err error
 	var pkg *Package
-	for _, db := range dataBases {
-		pkg, err = QueryPackageDatabase(packageName, db)
+	for _, db := range databases {
+		pkg, err = QueryPackageDatabase(name, db)
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		} else if err != nil {
@@ -77,5 +78,5 @@ func QueryPackage(packageName string) (*Package, error) {
 			return pkg, nil
 		}
 	}
-	return nil, err
+	return nil, fmt.Errorf("could not find package: %s", name)
 }

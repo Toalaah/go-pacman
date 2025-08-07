@@ -4,16 +4,19 @@ import (
 	_ "embed"
 	"fmt"
 	"log"
+	"os"
 
 	pacman "github.com/toalaah/go-pacman"
 )
 
 func main() {
-	pkg, err := pacman.QueryPackage("ffmpeg")
+	q := os.Args[1]
+	fmt.Printf("Query: %s\n", q)
+	pkg, err := pacman.QueryPackage(q)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%+v\n\n", pkg)
+	fmt.Printf("Found Package: %+v\n\n", pkg)
 	b, err := pkg.MarshalText()
 	if err != nil {
 		log.Fatal(err)
