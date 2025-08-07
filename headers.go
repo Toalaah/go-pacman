@@ -1,0 +1,27 @@
+package pacman
+
+const (
+	HeaderFilename     = "FILENAME"
+	HeaderName         = "NAME"
+	HeaderBase         = "BASE"
+	HeaderVersion      = "VERSION"
+	HeaderDescription  = "DESC"
+	HeaderCSize        = "CSIZE"
+	HeaderISize        = "ISIZE"
+	HeaderMD5Sum       = "MD5SUM"
+	HeaderSha256Sum    = "SHA256SUM"
+	HeaderPGPSignature = "PGPSIG"
+	HeaderURL          = "URL"
+	HeaderLicense      = "LICENSE"
+	HeaderArch         = "ARCH"
+	HeaderBuildDate    = "BUILDDATE"
+	HeaderPackager     = "PACKAGER"
+	HeaderGroups       = "GROUPS"
+	HeaderConflicts    = "CONFLICTS"
+	HeaderReplaces     = "REPLACES"
+	HeaderProvides     = "PROVIDES"
+	HeaderDepends      = "DEPENDS"
+	HeaderMakeDepends  = "MAKEDEPENDS"
+	HeaderOptDepends   = "OPTDEPENDS"
+	HeaderCheckDepends = "CHECKDEPENDS"
+)

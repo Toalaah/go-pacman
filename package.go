@@ -155,26 +155,26 @@ func writeSection(b *bytes.Buffer, v any, opts structTag) {
 	fmt.Fprintf(b, headerFormat, opts.Header)
 	// Write contents
 	switch opts.Header {
-	case "FILENAME", "NAME", "BASE", "VERSION", "DESC", "PGPSIG", "URL", "ARCH", "PACKAGER":
+	case HeaderFilename, HeaderName, HeaderBase, HeaderVersion, HeaderDescription, HeaderPGPSignature, HeaderURL, HeaderArch, HeaderPackager:
 		fmt.Fprintf(b, "%s", v)
-	case "CSIZE", "ISIZE":
+	case HeaderCSize, HeaderISize:
 		b.WriteString(strconv.FormatUint(v.(uint64), 10))
-	case "BUILDDATE":
+	case HeaderBuildDate:
 		v := v.(time.Time)
 		b.WriteString(strconv.FormatUint(uint64(v.Unix()), 10))
-	case "SHA256SUM":
+	case HeaderSha256Sum:
 		v := v.([sha256.Size]byte)
 		b.WriteString(hex.EncodeToString(v[:]))
-	case "MD5SUM":
+	case HeaderMD5Sum:
 		v := v.([md5.Size]byte)
 		b.WriteString(hex.EncodeToString(v[:]))
-	case "LICENSE":
+	case HeaderLicense:
 		v := v.([]License)
 		writeArray(b, v)
-	case "GROUPS", "CONFLICTS", "REPLACES", "PROVIDES", "DEPENDS", "MAKEDEPENDS", "CHECKDEPENDS":
+	case HeaderGroups, HeaderConflicts, HeaderReplaces, HeaderProvides, HeaderDepends, HeaderMakeDepends, HeaderCheckDepends:
 		v := v.([]string)
 		b.WriteString(strings.Join(v, "\n"))
-	case "OPTDEPENDS":
+	case HeaderOptDepends:
 		v := v.([]OptDependency)
 		writeArray(b, v)
 	// Yeah, we could just not care here and write whatever comes out of fmt.Sprintf("%+v", v), but since this is internal only we can expect to never run into this case. Hence, if we ever do, we are in big trouble anyways and/or forgot to account for a newly added header.
@@ -220,55 +220,55 @@ func (p *Package) parseSection(section []string) error {
 	var err error
 	switch header {
 	// String types
-	case "FILENAME":
+	case HeaderFilename:
 		p.FileName = data
-	case "NAME":
+	case HeaderName:
 		p.Name = data
-	case "BASE":
+	case HeaderBase:
 		p.Base = data
-	case "VERSION":
+	case HeaderVersion:
 		p.Version = data
-	case "DESC":
+	case HeaderDescription:
 		p.Description = data
-	case "PGPSIG":
+	case HeaderPGPSignature:
 		p.PGPSignature = data
-	case "URL":
+	case HeaderURL:
 		p.URL = data
-	case "ARCH":
+	case HeaderArch:
 		// TODO: validate architecture.
 		p.Arch = Architecture(data)
 
 	// Int types
-	case "CSIZE":
+	case HeaderCSize:
 		p.CSize, err = strconv.ParseUint(data, 10, 64)
 		if err != nil {
 			return err
 		}
-	case "ISIZE":
+	case HeaderISize:
 		p.ISize, err = strconv.ParseUint(data, 10, 64)
 		if err != nil {
 			return err
 		}
 
 	// List types
-	case "LICENSE":
+	case HeaderLicense:
 		for _, e := range section[1:] {
 			// TODO: validate licenses
 			p.Licenses = append(p.Licenses, License(e))
 		}
-	case "GROUPS":
+	case HeaderGroups:
 		p.Groups = append(p.Groups, section[1:]...)
-	case "CONFLICTS":
+	case HeaderConflicts:
 		p.Conflicts = append(p.Conflicts, section[1:]...)
-	case "REPLACES":
+	case HeaderReplaces:
 		p.Replaces = append(p.Replaces, section[1:]...)
-	case "PROVIDES":
+	case HeaderProvides:
 		p.Provides = append(p.Provides, section[1:]...)
-	case "DEPENDS":
+	case HeaderDepends:
 		p.Depends = append(p.Depends, section[1:]...)
-	case "MAKEDEPENDS":
+	case HeaderMakeDepends:
 		p.MakeDepends = append(p.MakeDepends, section[1:]...)
-	case "OPTDEPENDS":
+	case HeaderOptDepends:
 		for _, e := range section[1:] {
 			s := strings.Split(e, ": ")
 			optDep := OptDependency{Package: s[0]}
@@ -277,15 +277,15 @@ func (p *Package) parseSection(section []string) error {
 			}
 			p.OptDepends = append(p.OptDepends, optDep)
 		}
-	case "CHECKDEPENDS":
+	case HeaderCheckDepends:
 		p.CheckDepends = append(p.CheckDepends, section[1:]...)
-	case "SHA256SUM":
+	case HeaderSha256Sum:
 		sum, err := hex.DecodeString(data)
 		if err != nil {
 			return err
 		}
 		copy(p.Sha256Sum[:], sum[:sha256.Size])
-	case "MD5SUM":
+	case HeaderMD5Sum:
 		sum, err := hex.DecodeString(data)
 		if err != nil {
 			return err
@@ -293,14 +293,14 @@ func (p *Package) parseSection(section []string) error {
 		copy(p.Md5Sum[:], sum[:md5.Size])
 
 	// Misc types
-	case "BUILDDATE":
+	case HeaderBuildDate:
 		var t int64
 		t, err = strconv.ParseInt(data, 10, 64)
 		if err != nil {
 			return err
 		}
 		p.BuildDate = time.Unix(t, 0)
-	case "PACKAGER":
+	case HeaderPackager:
 		d := strings.Split(data, " ")
 		p.Packager.Name = strings.Join(d[:len(d)-1], " ")
 		p.Packager.Email = strings.TrimRight(strings.TrimLeft(d[len(d)-1], "<"), ">")
