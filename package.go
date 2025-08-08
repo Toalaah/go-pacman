@@ -34,6 +34,7 @@ type Package struct {
 	BuildDate    time.Time         `pacman:"header=BUILDDATE,omitempty"`
 	InstallDate  time.Time         `pacman:"header=INSTALLDATE,omitempty"`
 	Packager     Packager          `pacman:"header=PACKAGER,omitempty"`
+	Reason       int               `pacman:"header=REASON,omitempty"`
 	Groups       []string          `pacman:"header=GROUPS,omitempty"`
 	Conflicts    []string          `pacman:"header=CONFLICTS,omitempty"`
 	Replaces     []string          `pacman:"header=REPLACES,omitempty"`
@@ -162,6 +163,8 @@ func writeSection(b *bytes.Buffer, v any, opts structTag) {
 		fmt.Fprintf(b, "%s", v)
 	case HeaderCSize, HeaderISize, HeaderSize:
 		b.WriteString(strconv.FormatUint(v.(uint64), 10))
+	case HeaderReason:
+		fmt.Fprintf(b, "%d", v.(int))
 	case HeaderBuildDate, HeaderInstallDate:
 		v := v.(time.Time)
 		b.WriteString(strconv.FormatUint(uint64(v.Unix()), 10))
@@ -254,6 +257,12 @@ func (p *Package) parseSection(section []string) error {
 		if err != nil {
 			return err
 		}
+	case HeaderReason:
+		x, err := strconv.ParseInt(data, 10, 32)
+		if err != nil {
+			return err
+		}
+		p.Reason = int(x)
 
 	// List types
 	case HeaderLicense:

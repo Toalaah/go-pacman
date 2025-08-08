@@ -19,6 +19,7 @@ const (
 	HeaderBuildDate    = "BUILDDATE"
 	HeaderInstallDate  = "INSTALLDATE"
 	HeaderPackager     = "PACKAGER"
+	HeaderReason       = "REASON"
 	HeaderGroups       = "GROUPS"
 	HeaderConflicts    = "CONFLICTS"
 	HeaderReplaces     = "REPLACES"
